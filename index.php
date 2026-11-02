@@ -1,0 +1,96 @@
+<?php
+require_once 'config.php';
+
+// Lấy tham số bộ lọc từ người dùng
+$category_id = isset($_GET['category']) ? $_GET['category'] : '';
+$max_price = isset($_GET['max_price']) ? $_GET['max_price'] : '';
+
+// Xây dựng câu lệnh truy vấn động
+$sql = "SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1";
+$params = [];
+
+if (!empty($category_id)) {
+    $sql .= " AND p.category_id = ?";
+    $params[] = $category_id;
+}
+
+if (!empty($max_price)) {
+    $sql .= " AND p.price <= ?";
+    $params[] = $max_price;
+}
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Lấy danh sách danh mục để hiển thị trên form lọc
+$categories = $pdo->query("SELECT * FROM categories")->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Đồ Trang Trí Bàn Làm Việc</title>
+    <!-- Sử dụng Tailwind CSS như trong đề cương -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900">Trang Trí Góc Học Tập & Làm Việc</h1>
+            <p class="text-gray-600 mt-2">Cá nhân hóa không gian theo phong cách riêng của bạn</p>
+        </header>
+
+        <!-- Form Bộ Lọc -->
+        <form method="GET" class="bg-white p-4 rounded-lg shadow-md mb-8 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-4 items-center flex-wrap">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Phong cách:</label>
+                    <select name="category" class="mt-1 block rounded-md border-gray-300 shadow-sm border p-2">
+                        <option value="">Tất cả phong cách</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= $category_id == $cat['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Giá tối đa (VNĐ):</label>
+                    <input type="number" name="max_price" value="<?= htmlspecialchars($max_price) ?>" placeholder="VD: 500000" class="mt-1 block rounded-md border-gray-300 shadow-sm border p-2">
+                </div>
+            </div>
+
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">Lọc sản phẩm</button>
+        </form>
+
+        <!-- Danh sách sản phẩm -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <?php if (count($products) > 0): ?>
+                <?php foreach ($products as $product): ?>
+                    <div class="bg-white rounded-lg shadow overflow-hidden flex flex-col justify-between">
+                        <div>
+                            <div class="h-48 bg-gray-200 flex items-center justify-center text-gray-500">
+                                <!-- Placeholder hình ảnh -->
+                                <span>[Hình ảnh: <?= htmlspecialchars($product['image']) ?>]</span>
+                            </div>
+                            <div class="p-4">
+                                <span class="text-xs text-blue-600 font-semibold uppercase"><?= htmlspecialchars($product['category_name']) ?></span>
+                                <h3 class="text-lg font-bold text-gray-900 mt-1"><?= htmlspecialchars($product['name']) ?></h3>
+                                <p class="text-red-600 font-semibold mt-2"><?= number_format($product['price'], 0, ',', '.') ?> đ</p>
+                            </div>
+                        </div>
+                        <div class="p-4 pt-0">
+                            <a href="detail.php?id=<?= $product['id'] ?>" class="block text-center bg-gray-800 text-white py-2 rounded hover:bg-gray-700 transition">Xem chi tiết</a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p class="col-span-full text-center text-gray-500">Không tìm thấy sản phẩm phù hợp.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>
